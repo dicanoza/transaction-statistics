@@ -43,6 +43,36 @@ public class TransactionsRepositoryTest {
   }
 
   @Test
+  @DisplayName("60 seconds call")
+  public void call60TimesInRollTest() {
+    long time = new Date().getTime();
+    IntStream.range(0, 60).parallel().forEach(i -> {
+      transactionsRepository.store(time + (i * 1000), 1d);
+    });
+
+    Statistics load = transactionsRepository.load(time + 59000);
+    Assert.assertEquals(60, load.getSum(), 0d);
+    Assert.assertEquals(1, load.getAvg(), 0d);
+    Assert.assertEquals(1, load.getMax(), 0d);
+    Assert.assertEquals(1, load.getMin(), 0d);
+    Assert.assertEquals(60, load.getCount(), 0d);
+
+    load = transactionsRepository.load(time + 58000);
+    Assert.assertEquals(59, load.getSum(), 0d);
+    Assert.assertEquals(1, load.getAvg(), 0d);
+    Assert.assertEquals(1, load.getMax(), 0d);
+    Assert.assertEquals(1, load.getMin(), 0d);
+    Assert.assertEquals(59, load.getCount(), 0d);
+
+    load = transactionsRepository.load(time + 60000);
+    Assert.assertEquals(59, load.getSum(), 0d);
+    Assert.assertEquals(1, load.getAvg(), 0d);
+    Assert.assertEquals(1, load.getMax(), 0d);
+    Assert.assertEquals(1, load.getMin(), 0d);
+    Assert.assertEquals(59, load.getCount(), 0d);
+  }
+
+  @Test
   @DisplayName("check if the calculations are correct")
   public void calculationTest() {
     long time = new Date().getTime();
