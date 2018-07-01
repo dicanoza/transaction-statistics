@@ -7,6 +7,8 @@ import com.statistics.transactionstatistics.model.Statistics;
 import com.statistics.transactionstatistics.model.Transaction;
 import com.statistics.transactionstatistics.service.StatisticsService;
 import java.util.Date;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -15,6 +17,9 @@ import org.springframework.web.bind.annotation.RestController;
 
 @RestController
 public class StatisticsController {
+
+  private static Logger log = LoggerFactory.getLogger(StatisticsController.class);
+
 
   public static final int SIXTY_SECONDS = 60000;
   private StatisticsService statisticsService;
@@ -43,7 +48,9 @@ public class StatisticsController {
   @PostMapping("/transactions")
   public ResponseEntity<Void> transactions(
       @RequestBody Transaction transaction) {
+    log.info("Receiving a new transaction");
     if (transaction.getTimestamp() < (new Date().getTime() - SIXTY_SECONDS)) {
+      log.info("Old transaction, nothing to do");
       return ResponseEntity.noContent().build();
     }
 

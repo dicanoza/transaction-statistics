@@ -14,10 +14,13 @@ import com.statistics.transactionstatistics.TransactionStatisticsApplication;
 import com.statistics.transactionstatistics.model.Transaction;
 import java.util.Date;
 import java.util.stream.IntStream;
+import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.runner.RunWith;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.test.annotation.DirtiesContext;
@@ -33,6 +36,8 @@ import org.springframework.web.context.WebApplicationContext;
 @WebAppConfiguration
 @DirtiesContext(classMode = ClassMode.AFTER_EACH_TEST_METHOD)
 public class StatisticsControllerTest {
+
+  private static Logger log = LoggerFactory.getLogger(StatisticsControllerTest.class);
 
   ObjectMapper mapper = new ObjectMapper();
   String baseUri = "/transactions";
@@ -66,10 +71,10 @@ public class StatisticsControllerTest {
   }
 
   @Test
-  @DisplayName("executing 100000 calls in parallel")
+  @DisplayName("executing 1000 calls in parallel")
   public void concurrentExecution() throws Exception {
 
-    IntStream.range(0, 100000).parallel().forEach(i -> {
+    IntStream.range(0, 1000).parallel().forEach(i -> {
 
       Transaction transaction = new Transaction(new Date().getTime(), 5.4D);
       try {
@@ -79,17 +84,18 @@ public class StatisticsControllerTest {
             .andExpect(status().isCreated())
             .andExpect(header().string(LOCATION, containsString("/transactions")));
       } catch (Exception e) {
-        e.printStackTrace();
+        log.error("Error during the test",e);
+        Assert.fail();
       }
     });
 
     mvc.perform(get("/statistics"))
         .andExpect(status().isOk())
-        .andExpect(jsonPath("sum").value(540000D))
+        .andExpect(jsonPath("sum").value(5400D))
         .andExpect(jsonPath("max").value(5.4D))
         .andExpect(jsonPath("min").value(5.4D))
         .andExpect(jsonPath("avg").value(5.4D))
-        .andExpect(jsonPath("count").value(100000L));
+        .andExpect(jsonPath("count").value(1000L));
   }
 
   @Test

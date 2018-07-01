@@ -10,6 +10,8 @@ import java.util.Date;
 import java.util.Map.Entry;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.LongStream;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Repository;
 
@@ -17,6 +19,7 @@ import org.springframework.stereotype.Repository;
 public class TransactionsRepository {
 
   public static final int ONE_SECOND = 1000;
+  private static Logger log = LoggerFactory.getLogger(TransactionsRepository.class);
   private final ConcurrentHashMap<Long, Statistics> cache = new ConcurrentHashMap<>();
 
 
@@ -26,9 +29,10 @@ public class TransactionsRepository {
    * constant time for every call.
    *
    * @param timestamp of the transaction.
-   * @param value the amount of the transaction.
+   * @param amount the amount of the transaction.
    */
-  public void store(Long timestamp, Double value) {
+  public void store(Long timestamp, Double amount) {
+    log.info("Processing transaction, timestamp={},amount={}", timestamp, amount);
     final long threshold = getThreshold(timestamp);
     LongStream.range(0, 60)
         .parallel()
@@ -39,18 +43,18 @@ public class TransactionsRepository {
               statisticsEntity
                   .setSum(min(Double.MAX_VALUE,
                       valueOf(statisticsEntity.getSum())
-                      .add(valueOf(value))
-                      .doubleValue()));
+                          .add(valueOf(amount))
+                          .doubleValue()));
               statisticsEntity.setCount(statisticsEntity.getCount() + 1);
-              statisticsEntity.setMax(max(value, statisticsEntity.getMax()));
-              statisticsEntity.setMin(min(value, statisticsEntity.getMin()));
+              statisticsEntity.setMax(max(amount, statisticsEntity.getMax()));
+              statisticsEntity.setMin(min(amount, statisticsEntity.getMin()));
               statisticsEntity.setAvg(valueOf(statisticsEntity.getSum())
-                  .divide(valueOf(statisticsEntity.getCount()),RoundingMode.HALF_DOWN)
+                  .divide(valueOf(statisticsEntity.getCount()), RoundingMode.HALF_DOWN)
                   .doubleValue());
               return statisticsEntity;
             });
             cache.putIfAbsent(futureTimestamp,
-                new Statistics(value, value, value, value, 1L)
+                new Statistics(amount, amount, amount, amount, 1L)
             );
           }
         });
@@ -64,6 +68,7 @@ public class TransactionsRepository {
    * @return Statistics
    */
   public Statistics load(Long timestamp) {
+    log.info("Loading statistics for timestamp={}", timestamp);
     return cache.getOrDefault(getThreshold(timestamp), new Statistics());
   }
 
@@ -74,6 +79,7 @@ public class TransactionsRepository {
   @Scheduled(cron = "* * * * * *")
   public void cleanCache() {
     final long time = getThreshold(new Date().getTime()) - ONE_SECOND;
+    log.info("Cleaning statistics older then timestamp={}", time);
     cache
         .entrySet()
         .stream()
